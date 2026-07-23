@@ -643,6 +643,13 @@ static ssize_t mouse_param_store(struct device *dev, struct device_attribute *at
     }
     else if (attr == &dev_attr_cc_data_aggregate) {
         // nop
+        // // The driver never interprets the curve, it only hands it back to the GUI,
+        // // which sends the sampled result along as a LUT
+        // if (strscpy(new_config->cc_data_aggregate, buf,
+        //             sizeof(new_config->cc_data_aggregate)) < 0) {
+        //     ret = -E2BIG;
+        //     goto err_unlock;
+        // }
     }
     else if (attr == &dev_attr_rotation_angle) {
         long long val;
