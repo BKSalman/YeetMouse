@@ -11,7 +11,6 @@ extern "C" {
 #include <linux/module.h>
 #include "FixedMath/Fixed64.h"
 #include "accel.h"
-#include "../shared_definitions.h"
 
 extern unsigned long g_LutSize;
 static const FP_LONG FP64_PI =   C0NST_FP64_FromDouble(3.14159);
