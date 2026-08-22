@@ -2,6 +2,8 @@
 #include "accel.h"
 #include "../shared_definitions.h"
 #include "accel_modes.h"
+#include "defaults.h"
+#include "linux/stringify.h"
 #include "asm-generic/errno-base.h"
 #include "linux/device.h"
 #include "linux/device/class.h"
@@ -30,6 +32,13 @@ static ssize_t mouse_param_show(struct device *dev, struct device_attribute *att
 static ssize_t mouse_param_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 
 #define FILE_PERMISSIONS (0660)
+
+/* defaults.h holds plain decimal literals, so that userspace can share the same file */
+#define DEFAULT_FP64(name) ({                     \
+    FP_LONG __value = 0;                          \
+    FP64_FromString(__stringify(name), &__value); \
+    __value;                                      \
+})
 
 // Manual definition since we aren't using the default <name>_show naming convention
 static struct device_attribute dev_attr_acceleration_mode = __ATTR(acceleration_mode, FILE_PERMISSIONS, mouse_param_show, mouse_param_store);
@@ -301,11 +310,21 @@ static int driver_connect(struct input_handler *handler, struct input_dev *dev,
         goto err_free_state;
     }
 
-    accel_config->acceleration_mode = 1;
-    accel_config->sensitivity       = FP64_1;
-    accel_config->prescale          = FP64_1;
-    accel_config->acceleration      = FP64_1;
-    accel_config->ratio_yx          = FP64_1;
+    accel_config->acceleration_mode   = ACCELERATION_MODE;
+    accel_config->sensitivity         = DEFAULT_FP64(SENSITIVITY);
+    accel_config->ratio_yx            = DEFAULT_FP64(RATIO_YX);
+    accel_config->output_cap          = DEFAULT_FP64(OUTPUT_CAP);
+    accel_config->input_cap           = DEFAULT_FP64(INPUT_CAP);
+    accel_config->offset              = DEFAULT_FP64(OFFSET);
+    accel_config->prescale            = DEFAULT_FP64(PRESCALE);
+    accel_config->acceleration        = DEFAULT_FP64(ACCELERATION);
+    accel_config->midpoint            = DEFAULT_FP64(MIDPOINT);
+    accel_config->motivity            = DEFAULT_FP64(MOTIVITY);
+    accel_config->exponent            = DEFAULT_FP64(EXPONENT);
+    accel_config->use_smoothing       = USE_SMOOTHING;
+    accel_config->rotation_angle      = DEFAULT_FP64(ROTATION_ANGLE);
+    accel_config->angle_snap_threshold = DEFAULT_FP64(ANGLE_SNAPPING_THRESHOLD);
+    accel_config->angle_snap_angle    = DEFAULT_FP64(ANGLE_SNAPPING_ANGLE);
 
     state->modes_consts.current_func_at_0 = FP64_1;
     update_constants(accel_config, &state->modes_consts);
