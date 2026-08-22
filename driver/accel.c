@@ -86,28 +86,28 @@ int accelerate(const struct accel_params * params, struct accel_runtime *rt, con
     if (speed > 0) {
         switch (params->acceleration_mode) {
             case AccelMode_Linear:
-                speed = accel_linear(constants, params->acceleration, params->use_smoothing, speed);
+                speed = accel_linear(constants, params, speed);
                 break;
             case AccelMode_Power:
-                speed = accel_power(constants, params->midpoint, params->acceleration, params->exponent, params->use_smoothing, speed);
+                speed = accel_power(constants, params, speed);
                 break;
             case AccelMode_Classic:
-                speed = accel_classic(constants, params->acceleration, params->use_smoothing, speed);
+                speed = accel_classic(constants, params, speed);
                 break;
             case AccelMode_Motivity:
-                speed = accel_motivity(constants, params->midpoint, speed);
+                speed = accel_motivity(constants, params, speed);
                 break;
             case AccelMode_Synchronous:
-                speed = accel_synchronous(constants, params->acceleration, params->use_smoothing, speed);
+                speed = accel_synchronous(constants, params, speed);
                 break;
             case AccelMode_Natural:
-                speed = accel_natural(constants, params->midpoint, params->use_smoothing, speed);
+                speed = accel_natural(constants, params, speed);
                 break;
             case AccelMode_Jump:
-                speed = accel_jump(constants, params->midpoint, params->use_smoothing, speed);
+                speed = accel_jump(constants, params, speed);
                 break;
             case AccelMode_Lut: case AccelMode_CustomCurve:
-                speed = accel_lut(params->lut_pairs, params->lut_data_x, params->lut_data_y, speed);
+                speed = accel_lut(params, speed);
                 break;
             default:
                 speed = FP64_1;

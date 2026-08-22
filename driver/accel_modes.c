@@ -309,28 +309,28 @@ void update_constants(struct accel_params *params, struct ModesConstants *consta
     static_assert(AccelMode_Count == 10, "Wrong AccelMode count!");
     switch (params->acceleration_mode) {
         case AccelMode_Linear:
-            constants->current_func_at_0 = accel_linear(constants, params->acceleration, params->use_smoothing, FP64_0_01);
+            constants->current_func_at_0 = accel_linear(constants, params, FP64_0_01);
             break;
         case AccelMode_Power:
-            constants->current_func_at_0 = accel_power(constants, params->midpoint, params->acceleration, params->exponent, params->use_smoothing, FP64_0_01);
+            constants->current_func_at_0 = accel_power(constants, params, FP64_0_01);
             break;
         case AccelMode_Classic:
-            constants->current_func_at_0 = accel_classic(constants, params->acceleration, params->use_smoothing, FP64_0_01);
+            constants->current_func_at_0 = accel_classic(constants, params, FP64_0_01);
             break;
         case AccelMode_Motivity:
-            constants->current_func_at_0 = accel_motivity(constants, params->midpoint, FP64_0_01);
+            constants->current_func_at_0 = accel_motivity(constants, params, FP64_0_01);
             break;
         case AccelMode_Synchronous:
-            constants->current_func_at_0 = accel_synchronous(constants, params->acceleration, params->use_smoothing, FP64_0_01);
+            constants->current_func_at_0 = accel_synchronous(constants, params, FP64_0_01);
             break;
         case AccelMode_Natural:
-            constants->current_func_at_0 = accel_natural(constants, params->midpoint, params->use_smoothing, FP64_0_01);
+            constants->current_func_at_0 = accel_natural(constants, params, FP64_0_01);
             break;
         case AccelMode_Jump:
-            constants->current_func_at_0 = accel_jump(constants, params->midpoint, params->use_smoothing, FP64_0_01);
+            constants->current_func_at_0 = accel_jump(constants, params, FP64_0_01);
             break;
         case AccelMode_Lut: case AccelMode_CustomCurve:
-            constants->current_func_at_0 = accel_lut(params->lut_pairs, params->lut_data_x, params->lut_data_y, FP64_0_01);
+            constants->current_func_at_0 = accel_lut(params, FP64_0_01);
             break;
         default:
             constants->current_func_at_0 = FP64_1;
@@ -380,29 +380,29 @@ static FP_LONG synchronous_eval(const struct ModesConstants *constants, FP_LONG 
     return FP64_DivPrecise(y, constants->x_start);
 }
 
-FP_LONG accel_linear(const struct ModesConstants *constants, FP_LONG acceleration, bool use_smoothing, FP_LONG speed) {
-    if (use_smoothing) {
+FP_LONG accel_linear(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed) {
+    if (params->use_smoothing) {
         if (speed < constants->cap_x) {
-            speed = FP64_Mul(constants->sign, FP64_Mul(speed, acceleration));
+            speed = FP64_Mul(constants->sign, FP64_Mul(speed, params->acceleration));
         } else {
             speed = FP64_Mul(constants->sign, FP64_Add(FP64_DivPrecise(constants->gain_constant, speed), constants->cap_y));
         }
     } else {
-        speed = FP64_Mul(speed, acceleration);
+        speed = FP64_Mul(speed, params->acceleration);
     }
     return FP64_Add(FP64_1, speed);
 }
 
-FP_LONG accel_power(const struct ModesConstants *constants, FP_LONG midpoint, FP_LONG acceleration, FP_LONG exponent, bool use_smoothing, FP_LONG speed) {
+FP_LONG accel_power(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed) {
     if (speed <= constants->offset_x)
-        speed = midpoint;
+        speed = params->midpoint;
     else {
-        if (use_smoothing) {
+        if (params->use_smoothing) {
             if (speed < constants->cap_x) {
                 if (constants->power_constant == 0)
-                    speed = FP64_PowFast(FP64_Mul(speed, acceleration), exponent);
+                    speed = FP64_PowFast(FP64_Mul(speed, params->acceleration), params->exponent);
                 else
-                    speed = FP64_Add(FP64_PowFast(FP64_Mul(speed, acceleration), exponent), FP64_DivPrecise(constants->power_constant, speed));
+                    speed = FP64_Add(FP64_PowFast(FP64_Mul(speed, params->acceleration), params->exponent), FP64_DivPrecise(constants->power_constant, speed));
             } else {
                 if (constants->cap_x == FP64_FromInt(0)) {
                     speed = constants->cap_y;
@@ -412,15 +412,15 @@ FP_LONG accel_power(const struct ModesConstants *constants, FP_LONG midpoint, FP
             }
         } else {
             if (constants->power_constant == 0)
-                speed = FP64_PowFast(FP64_Mul(speed, acceleration), exponent);
+                speed = FP64_PowFast(FP64_Mul(speed, params->acceleration), params->exponent);
             else
-                speed = FP64_Add(FP64_PowFast(FP64_Mul(speed, acceleration), exponent), FP64_DivPrecise(constants->power_constant, speed));
+                speed = FP64_Add(FP64_PowFast(FP64_Mul(speed, params->acceleration), params->exponent), FP64_DivPrecise(constants->power_constant, speed));
         }
     }
     return speed;
 }
 
-FP_LONG accel_classic(const struct ModesConstants *constants, FP_LONG acceleration, bool use_smoothing, FP_LONG speed) {
+FP_LONG accel_classic(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed) {
     // (Speed * Acceleration) ^ (Exponent - 1) + 1
     // Same as above just without adding the one
     //speed *= g_Acceleration;
@@ -429,12 +429,12 @@ FP_LONG accel_classic(const struct ModesConstants *constants, FP_LONG accelerati
 
     // FIXED-POINT:
     FP_LONG accel_classic_result = speed;
-    accel_classic_result = FP64_Mul(accel_classic_result, acceleration);
+    accel_classic_result = FP64_Mul(accel_classic_result, params->acceleration);
     accel_classic_result = FP64_PowFast(accel_classic_result, constants->exp_sub_1);
 
     // if Use Smooth Cap is on, we proceed to calculate the transition
     // point and the function that provides the smooth cap
-    if (use_smoothing) {
+    if (params->use_smoothing) {
         // we setup the y cap
         if (speed < constants->cap_x) {
             accel_classic_result = FP64_Mul(constants->sign, accel_classic_result);
@@ -450,7 +450,7 @@ FP_LONG accel_classic(const struct ModesConstants *constants, FP_LONG accelerati
     return speed;
 }
 
-FP_LONG accel_motivity(const struct ModesConstants *constants, FP_LONG midpoint, FP_LONG speed) {
+FP_LONG accel_motivity(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed) {
     // Acceleration / ( 1 + e ^ (midpoint - x))
     //product = g_Midpoint-speed;
     //motivity = e;
@@ -459,28 +459,28 @@ FP_LONG accel_motivity(const struct ModesConstants *constants, FP_LONG midpoint,
     //speed = motivity;
 
     // FIXED-POINT:
-    FP_LONG exp = FP64_ExpFast(FP64_Sub(midpoint, speed));
+    FP_LONG exp = FP64_ExpFast(FP64_Sub(params->midpoint, speed));
     speed = FP64_Add(FP64_1, FP64_DivPrecise(constants->accel_sub_1, FP64_Add(FP64_1, exp)));
     return speed;
 }
 
-FP_LONG accel_synchronous(const struct ModesConstants *constants, FP_LONG acceleration, bool use_smoothing, FP_LONG speed) {
+FP_LONG accel_synchronous(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed) {
     // Defensive: ensure speed > 0 for log-domain math; you can clamp differently if your file already does.
     if (speed <= 0) {
         return FP64_1;
     }
 
     FP_LONG val;
-    if (use_smoothing && constants->lut_ready) {
+    if (params->use_smoothing && constants->lut_ready) {
         val = synchronous_eval(constants, speed);
     } else {
-        val = synchronous_legacy(constants, acceleration, speed);
+        val = synchronous_legacy(constants, params->acceleration, speed);
     }
     return val;
 }
 
 
-FP_LONG accel_jump(const struct ModesConstants *constants, FP_LONG midpoint, bool use_smoothing, FP_LONG speed) {
+FP_LONG accel_jump(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed) {
     // r = 2pi/(k*midpoint), where k is the smoothness factor (stored inside g_Exponent)
     // Jump: Acceleration / (1 + exp(r(midpoint - x))) + 1
     // Smooth: Integral of the above divided by x pretty much
@@ -488,25 +488,25 @@ FP_LONG accel_jump(const struct ModesConstants *constants, FP_LONG midpoint, boo
     if (speed <= 0)
         return FP64_1;
 
-    FP_LONG exp_arg = FP64_Mul(constants->r, FP64_Sub(midpoint, speed));
+    FP_LONG exp_arg = FP64_Mul(constants->r, FP64_Sub(params->midpoint, speed));
     FP_LONG D = FP64_Exp(exp_arg);
 
-    if(use_smoothing) { // smooth
+    if(params->use_smoothing) { // smooth
         if (constants->r != 0) {
             FP_LONG natural_log = exp_arg > (EXP_ARG_THRESHOLD << FP64_Shift) ? exp_arg : FP64_Log(FP64_Add(FP64_1, D));
             FP_LONG integral = FP64_Mul(constants->accel_sub_1, FP64_Add(speed, FP64_DivPrecise(natural_log, constants->r)));
             // Not really an integral
             speed = FP64_Add(FP64_DivPrecise(FP64_Sub(integral, constants->C0), speed), FP64_1);
         }
-        else if (speed <= midpoint)
+        else if (speed <= params->midpoint)
             speed = FP64_1;
         else
-            speed = FP64_Add(FP64_DivPrecise(FP64_Mul(constants->accel_sub_1, FP64_Sub(speed, midpoint)), speed), FP64_1);
+            speed = FP64_Add(FP64_DivPrecise(FP64_Mul(constants->accel_sub_1, FP64_Sub(speed, params->midpoint)), speed), FP64_1);
     }
     else {
         if (constants->r != 0)
             speed = FP64_Add(FP64_DivPrecise(constants->accel_sub_1, FP64_Add(FP64_1, D)), FP64_1);
-        else if (speed <= midpoint)
+        else if (speed <= params->midpoint)
             speed = FP64_1;
         else
             speed = FP64_Add(constants->accel_sub_1, FP64_1);
@@ -515,14 +515,14 @@ FP_LONG accel_jump(const struct ModesConstants *constants, FP_LONG midpoint, boo
     return speed;
 }
 
-FP_LONG accel_natural(const struct ModesConstants *constants, FP_LONG midpoint, bool use_smoothing, FP_LONG speed) {
-    if (speed <= midpoint) {
+FP_LONG accel_natural(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed) {
+    if (speed <= params->midpoint) {
         speed = FP64_1;
     } else {
-        FP_LONG n_offset_x = FP64_Sub(midpoint, speed);
+        FP_LONG n_offset_x = FP64_Sub(params->midpoint, speed);
         FP_LONG decay = FP64_Exp(FP64_Mul(constants->auxiliar_accel, n_offset_x));
 
-        if (use_smoothing) {
+        if (params->use_smoothing) {
             FP_LONG decay_auxiliaraccel =
                     FP64_DivPrecise(decay, constants->auxiliar_accel);
             FP_LONG numerator = FP64_Add(
@@ -532,7 +532,7 @@ FP_LONG accel_natural(const struct ModesConstants *constants, FP_LONG midpoint, 
         } else {
             speed = FP64_Add(
                 FP64_Mul(constants->exp_sub_1, (FP64_Sub(
-                             FP64_1, FP64_DivPrecise(FP64_Sub(midpoint, FP64_Mul(decay, n_offset_x)), speed)))),
+                             FP64_1, FP64_DivPrecise(FP64_Sub(params->midpoint, FP64_Mul(decay, n_offset_x)), speed)))),
                 FP64_1);
         }
     }
@@ -544,17 +544,17 @@ FP_LONG accel_natural(const struct ModesConstants *constants, FP_LONG midpoint, 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #endif
 
-FP_LONG accel_lut(unsigned long lut_pairs, const FP_LONG lut_data_x[MAX_LUT_ARRAY_SIZE], const FP_LONG lut_data_y[MAX_LUT_ARRAY_SIZE], FP_LONG speed) {
+FP_LONG accel_lut(const struct accel_params *params, FP_LONG speed) {
     // Assumes the size and values are valid. Please don't change LUT parameters by hand.
 
-    if(speed < lut_data_x[0]) // Check if the speed is below the first given point
-        speed = lut_data_y[0];
+    if(speed < params->lut_data_x[0]) // Check if the speed is below the first given point
+        speed = params->lut_data_y[0];
     else {
-        int l = 0, r = lut_pairs - 1, best_point = r, iter = 0; // We REALLY don't want an infinity loop in kernel
+        int l = 0, r = params->lut_pairs - 1, best_point = r, iter = 0; // We REALLY don't want an infinity loop in kernel
         while (l <= r && iter < 10) {
             int mid = (r + l) / 2;
 
-            if (speed > lut_data_x[mid]) {
+            if (speed > params->lut_data_x[mid]) {
                 l = mid + 1;
             } else {
                 best_point = mid;
@@ -564,14 +564,14 @@ FP_LONG accel_lut(unsigned long lut_pairs, const FP_LONG lut_data_x[MAX_LUT_ARRA
             iter++;
         }
 
-        int index = MIN(best_point-1, lut_pairs-2);
+        int index = MIN(best_point-1, params->lut_pairs-2);
 
-        FP_LONG p = lut_data_y[index];
-        FP_LONG p1 = lut_data_y[index + 1];
+        FP_LONG p = params->lut_data_y[index];
+        FP_LONG p1 = params->lut_data_y[index + 1];
 
         // denominator should not possibly ever be equal to 0 here... (we all know how this will end)
-        FP_LONG frac = FP64_DivPrecise(speed - lut_data_x[index],
-                                       lut_data_x[index + 1] - lut_data_x[index]);
+        FP_LONG frac = FP64_DivPrecise(speed - params->lut_data_x[index],
+                                       params->lut_data_x[index + 1] - params->lut_data_x[index]);
 
         speed = FP64_Lerp(p, p1, frac);
     }

@@ -26,14 +26,14 @@ static const FP_LONG FP64_10000   = 10000ll << FP64_Shift;
 
 void update_constants(struct accel_params *params, struct ModesConstants *constants);
 
-FP_LONG accel_linear(const struct ModesConstants *constants, FP_LONG acceleration, bool use_smoothing, FP_LONG speed);
-FP_LONG accel_power(const struct ModesConstants *constants, FP_LONG midpoint, FP_LONG acceleration, FP_LONG exponent, bool use_smoothing, FP_LONG speed);
-FP_LONG accel_classic(const struct ModesConstants *constants, FP_LONG acceleration, bool use_smoothing, FP_LONG speed);
-FP_LONG accel_motivity(const struct ModesConstants *constants, FP_LONG midpoint, FP_LONG speed);
-FP_LONG accel_synchronous(const struct ModesConstants *constants, FP_LONG acceleration, bool use_smoothing, FP_LONG speed);
-FP_LONG accel_natural(const struct ModesConstants *constants, FP_LONG midpoint, bool use_smoothing, FP_LONG speed);
-FP_LONG accel_jump(const struct ModesConstants *constants, FP_LONG midpoint, bool use_smoothing, FP_LONG speed);
-FP_LONG accel_lut(unsigned long lut_pairs, const FP_LONG lut_data_x[MAX_LUT_ARRAY_SIZE], const FP_LONG lut_data_y[MAX_LUT_ARRAY_SIZE], FP_LONG speed);
+FP_LONG accel_linear(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed);
+FP_LONG accel_power(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed);
+FP_LONG accel_classic(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed);
+FP_LONG accel_motivity(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed);
+FP_LONG accel_synchronous(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed);
+FP_LONG accel_natural(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed);
+FP_LONG accel_jump(const struct ModesConstants *constants, const struct accel_params *params, FP_LONG speed);
+FP_LONG accel_lut(const struct accel_params *params, FP_LONG speed);
 
 #ifdef __cplusplus
 }
