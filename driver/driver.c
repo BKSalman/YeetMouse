@@ -419,6 +419,44 @@ struct input_handler driver_handler = {
     .match = driver_match
 };
 
+#define PARAM_DECIMALS (6)
+
+static ssize_t emit_fp64(char *buf, FP_LONG value) {
+    char output[32];
+
+    FP64_ToString(value, output, PARAM_DECIMALS);
+    return sysfs_emit(buf, "%s\n", output);
+}
+
+static ssize_t emit_lut_data(char *buf, const struct accel_params *params) {
+    char value[32];
+    unsigned long i;
+    int len = 0;
+
+    for (i = 0; i < params->lut_pairs; i++) {
+        /* Leave room for the longest pair we could still append */
+        if (len > PAGE_SIZE - 2 * sizeof(value))
+            break;
+
+        FP64_ToString(params->lut_data_x[i], value, PARAM_DECIMALS);
+        len += sysfs_emit_at(buf, len, "%s,", value);
+        FP64_ToString(params->lut_data_y[i], value, PARAM_DECIMALS);
+        len += sysfs_emit_at(buf, len, "%s;", value);
+    }
+
+    return len + sysfs_emit_at(buf, len, "\n");
+}
+
+static int parse_fp64(const char *buf, FP_LONG *out) {
+    FP_LONG value;
+
+    if (FP64_FromString(buf, &value) <= 0)
+        return -EINVAL;
+
+    *out = value;
+    return 0;
+}
+
 static ssize_t mouse_param_show(struct device *dev, struct device_attribute *attr, char *buf) {
     struct input_dev *idev = to_input_dev(dev);
     struct mouse_state *state = input_get_drvdata(idev);
@@ -430,45 +468,41 @@ static ssize_t mouse_param_show(struct device *dev, struct device_attribute *att
 
     rcu_read_lock();
     params = rcu_dereference(state->params);
-    // TODO
 
     if (attr == &dev_attr_acceleration_mode) {
         ret = sysfs_emit(buf, "%d\n", params->acceleration_mode);
     } else if (attr == &dev_attr_input_cap) {
-        ret = sysfs_emit(buf, "%lld\n", params->input_cap);
+        ret = emit_fp64(buf, params->input_cap);
     } else if (attr == &dev_attr_ratio_yx) {
-        ret = sysfs_emit(buf, "%lld\n", params->ratio_yx);
+        ret = emit_fp64(buf, params->ratio_yx);
     } else if (attr == &dev_attr_output_cap) {
-        ret = sysfs_emit(buf, "%lld\n", params->output_cap);
+        ret = emit_fp64(buf, params->output_cap);
     } else if (attr == &dev_attr_offset) {
-        ret = sysfs_emit(buf, "%lld\n", params->offset);
+        ret = emit_fp64(buf, params->offset);
     } else if (attr == &dev_attr_prescale) {
-        ret = sysfs_emit(buf, "%lld\n", params->prescale);
+        ret = emit_fp64(buf, params->prescale);
     } else if (attr == &dev_attr_acceleration) {
-        char output[64];
-        FP64_ToString(params->acceleration, output, 2);
-        ret = sysfs_emit(buf, "%s\n", output);
+        ret = emit_fp64(buf, params->acceleration);
     } else if (attr == &dev_attr_sensitivity) {
-        ret = sysfs_emit(buf, "%lld\n", params->sensitivity);
+        ret = emit_fp64(buf, params->sensitivity);
     } else if (attr == &dev_attr_exponent) {
-        ret = sysfs_emit(buf, "%lld\n", params->exponent);
+        ret = emit_fp64(buf, params->exponent);
     } else if (attr == &dev_attr_midpoint) {
-        ret = sysfs_emit(buf, "%lld\n", params->midpoint);
+        ret = emit_fp64(buf, params->midpoint);
     } else if (attr == &dev_attr_motivity) {
-        ret = sysfs_emit(buf, "%lld\n", params->motivity);
+        ret = emit_fp64(buf, params->motivity);
     } else if (attr == &dev_attr_use_smoothing) {
         ret = sysfs_emit(buf, "%d\n", params->use_smoothing);
     } else if (attr == &dev_attr_lut_data) {
-        ret = sysfs_emit(buf, "%s\n", "TODO");
-        // ret = sysfs_emit(buf, "%s\n", params->lut_data);
+        ret = emit_lut_data(buf, params);
     } else if (attr == &dev_attr_cc_data_aggregate) {
         ret = sysfs_emit(buf, "%s\n", params->cc_data_aggregate);
     } else if (attr == &dev_attr_rotation_angle) {
-        ret = sysfs_emit(buf, "%lld\n", params->rotation_angle);
+        ret = emit_fp64(buf, params->rotation_angle);
     } else if (attr == &dev_attr_angle_snap_threshold) {
-        ret = sysfs_emit(buf, "%lld\n", params->angle_snap_threshold);
+        ret = emit_fp64(buf, params->angle_snap_threshold);
     } else if (attr == &dev_attr_angle_snap_angle) {
-        ret = sysfs_emit(buf, "%lld\n", params->angle_snap_angle);
+        ret = emit_fp64(buf, params->angle_snap_angle);
     } else {
         ret = -EINVAL;
     }
@@ -559,94 +593,58 @@ static ssize_t mouse_param_store(struct device *dev, struct device_attribute *at
         new_config->acceleration_mode = val;
     }
     else if (attr == &dev_attr_input_cap) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->input_cap);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->input_cap = val;
     }
     else if (attr == &dev_attr_ratio_yx) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->ratio_yx);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->ratio_yx = val;
     }
     else if (attr == &dev_attr_output_cap) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->output_cap);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->output_cap = val;
     }
     else if (attr == &dev_attr_offset) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->offset);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->offset = val;
     }
     else if (attr == &dev_attr_prescale) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->prescale);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->prescale = val;
     }
     else if (attr == &dev_attr_acceleration) {
-        FP_LONG val;
-        FP64_FromString(buf, &val);
-        new_config->acceleration = val;
+        ret = parse_fp64(buf, &new_config->acceleration);
+        if (ret)
+            goto err_unlock;
     }
     else if (attr == &dev_attr_sensitivity) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->sensitivity);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->sensitivity = val;
     }
     else if (attr == &dev_attr_exponent) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->exponent);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->exponent = val;
     }
     else if (attr == &dev_attr_midpoint) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->midpoint);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->midpoint = val;
     }
     else if (attr == &dev_attr_motivity) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->motivity);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->motivity = val;
     }
     else if (attr == &dev_attr_use_smoothing) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
+        bool val;
+        ret = kstrtobool(buf, &val);
         if (ret) {
             goto err_unlock;
         }
@@ -671,31 +669,19 @@ static ssize_t mouse_param_store(struct device *dev, struct device_attribute *at
         // }
     }
     else if (attr == &dev_attr_rotation_angle) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->rotation_angle);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->rotation_angle = val;
     }
     else if (attr == &dev_attr_angle_snap_threshold) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->angle_snap_threshold);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->angle_snap_threshold = val;
     }
     else if (attr == &dev_attr_angle_snap_angle) {
-        long long val;
-        ret = kstrtoll(buf, 10, &val);
-        if (ret) {
+        ret = parse_fp64(buf, &new_config->angle_snap_angle);
+        if (ret)
             goto err_unlock;
-        }
-
-        new_config->angle_snap_angle = val;
     }
 
     validate_config(new_config);
