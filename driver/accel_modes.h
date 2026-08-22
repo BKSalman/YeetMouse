@@ -12,7 +12,6 @@ extern "C" {
 #include "FixedMath/Fixed64.h"
 #include "accel.h"
 
-extern unsigned long g_LutSize;
 static const FP_LONG FP64_PI =   C0NST_FP64_FromDouble(3.14159);
 static const FP_LONG FP64_PI_2 = C0NST_FP64_FromDouble(1.57079);
 static const FP_LONG FP64_PI_4 = C0NST_FP64_FromDouble(0.78539);

@@ -10,8 +10,7 @@
 #include "CustomCurve.h"
 #include "../shared_definitions.h"
 
-#define YEETMOUSE_PARAMS_DIR "/sys/module/yeetmouse/parameters/"
-
+// Every mouse the driver attached to gets its own directory here, holding an `accel_config` group
 #define YEETMOUSE_CLASS_DIR "/sys/class/yeetmouse/"
 #define YEETMOUSE_DEVICE_PARAMS_SUBDIR "accel_config"
 
